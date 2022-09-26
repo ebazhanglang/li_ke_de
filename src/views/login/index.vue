@@ -116,6 +116,9 @@ export default {
             loginType: 0,
             clientToken: this.clientToken
           })
+          if (this.$store.state.user.token) {
+            this.$router.push('/')
+          }
         }
       })
     },
@@ -124,7 +127,6 @@ export default {
       const randomNum = Math.random() * 10
       this.clientToken = randomNum
       const data = await getCodeAPI(randomNum)
-      // console.log(data)
       this.urlCode = data.config.url
     }
   }

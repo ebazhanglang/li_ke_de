@@ -1,3 +1,4 @@
+import { Message } from 'element-ui'
 import { loginAPI } from '@/api/user'
 const state = {
   token: {}
@@ -12,9 +13,10 @@ const mutations = {
 const actions = {
   async login({ commit }, userInfo) {
     const { data } = await loginAPI(userInfo)
-    if (data.msg !== '登录成功') return
+    if (data.msg !== '登录成功') {
+      return Message.error(data.msg)
+    }
     commit('GET_TOKEN', data.token)
-    console.log(data.msg)
   }
 }
 
