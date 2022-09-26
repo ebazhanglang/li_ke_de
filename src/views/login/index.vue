@@ -1,6 +1,13 @@
 <template>
   <div class="login-container">
-    <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form" auto-complete="on" label-position="left">
+    <el-form
+      ref="loginFrom"
+      :model="loginFrom"
+      :rules="rules"
+      class="login-form"
+      auto-complete="on"
+      label-position="left"
+    >
 
       <div class="title-container">
         <h3 class="title">
@@ -8,14 +15,14 @@
         </h3>
       </div>
 
-      <el-form-item prop="username">
+      <el-form-item prop="Account">
         <span class="svg-container">
           <svg-icon icon-class="user" />
         </span>
         <el-input
           ref="username"
-          v-model="loginForm.username"
-          placeholder="Username"
+          v-model="loginFrom.Account"
+          placeholder="请输入账号"
           name="username"
           type="text"
           tabindex="1"
@@ -23,105 +30,102 @@
         />
       </el-form-item>
 
-      <el-form-item prop="password">
+      <el-form-item prop="pwd">
         <span class="svg-container">
           <svg-icon icon-class="password" />
         </span>
         <el-input
-          :key="passwordType"
           ref="password"
-          v-model="loginForm.password"
+          v-model="loginFrom.pwd"
           :type="passwordType"
-          placeholder="Password"
+          placeholder="请输入密码"
+          prop="pwd"
           name="password"
           tabindex="2"
           auto-complete="on"
           @keyup.enter.native="handleLogin"
         />
-        <span class="show-pwd" @click="showPwd">
-          <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
+        <span class="show-pwd">
+          <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" @click="changeIcon" />
         </span>
       </el-form-item>
 
-      <el-button :loading="loading" type="primary" style="width:100%;margin-bottom:30px;" @click.native.prevent="handleLogin">Login</el-button>
+      <el-form-item prop="validateCode">
+        <span class="svg-container">
+          <i class="el-icon-fork-spoon" />
+        </span>
+        <el-input v-model="loginFrom.validateCode" maxlength="4" class="code">
+          <template #suffix>
+            <img ref="code" :src="urlCode" alt="" @click="getCode">
+          </template>
+        </el-input>
 
-      <div class="tips">
-        <span style="margin-right:20px;">username: admin</span>
-        <span> password: any</span>
-      </div>
+      </el-form-item>
+
+      <el-button type="primary" style="width:100%;margin-bottom:30px;" @click="login">登录</el-button>
 
     </el-form>
   </div>
 </template>
 
 <script>
-import { validUsername } from '@/utils/validate'
-
+// import { validUsername } from '@/utils/validate'
+import { getCodeAPI } from '@/api/user'
 export default {
   name: 'Login',
   data() {
-    const validateUsername = (rule, value, callback) => {
-      if (!validUsername(value)) {
-        callback(new Error('Please enter the correct user name'))
-      } else {
-        callback()
-      }
-    }
-    const validatePassword = (rule, value, callback) => {
-      if (value.length < 6) {
-        callback(new Error('The password can not be less than 6 digits'))
-      } else {
-        callback()
-      }
-    }
     return {
-      loginForm: {
-        username: 'admin',
-        password: '111111'
-      },
-      loginRules: {
-        username: [{ required: true, trigger: 'blur', validator: validateUsername }],
-        password: [{ required: true, trigger: 'blur', validator: validatePassword }]
-      },
-      loading: false,
+      urlCode: '',
+      clientToken: '',
       passwordType: 'password',
-      redirect: undefined
+      loginFrom: {
+        Account: '',
+        pwd: '',
+        validateCode: ''
+
+      },
+      rules: {
+        Account: [
+          { required: true, message: '请输入账号', trigger: 'blur' },
+          { min: 1, max: 5, message: '账户格式不对', trigger: 'blur' }
+        ],
+        pwd: [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { min: 1, max: 5, message: '账户格式不对', trigger: 'blur' }
+        ],
+        validateCode: [
+          { required: true, message: '请输入验证码', trigger: 'blur' }
+        ]
+      }
     }
   },
-  watch: {
-    $route: {
-      handler: function(route) {
-        this.redirect = route.query && route.query.redirect
-      },
-      immediate: true
-    }
+  created() {
+    this.getCode()
   },
   methods: {
-    showPwd() {
-      if (this.passwordType === 'password') {
-        this.passwordType = ''
-      } else {
-        this.passwordType = 'password'
-      }
-      this.$nextTick(() => {
-        this.$refs.password.focus()
-      })
+    changeIcon() {
+      this.passwordType === 'password' ? this.passwordType = '' : this.passwordType = 'password'
     },
-    handleLogin() {
-      this.$refs.loginForm.validate(valid => {
-        if (valid) {
-          this.loading = true
-          this.$store.dispatch('user/login', this.loginForm).then(() => {
-            this.$router.push({ path: this.redirect || '/' })
-            this.loading = false
-          }).catch(() => {
-            this.loading = false
+    async login() {
+      this.$refs.loginFrom.validate(islogin => {
+        if (islogin) {
+          this.$store.dispatch('user/login', {
+            loginName: this.loginFrom.Account,
+            password: this.loginFrom.pwd,
+            code: this.loginFrom.validateCode,
+            loginType: 0,
+            clientToken: this.clientToken
           })
-        } else {
-          console.log('error submit!!')
-          return false
         }
       })
+    },
+    // 获取验证码
+    async getCode() {
+      const randomNum = Math.random() * 10
+      this.clientToken = randomNum
+      const data = await getCodeAPI(randomNum)
+      // console.log(data)
+      this.urlCode = data.config.url
     }
   }
 }
@@ -159,17 +163,22 @@ $cursor: #fff;
       caret-color: $cursor;
 
       &:-webkit-autofill {
-        box-shadow: 0 0 0px 1000px $bg inset !important;
-        -webkit-text-fill-color: $cursor !important;
+        box-shadow: 0 0 0px 1000px white inset !important;
+        -webkit-text-fill-color: #999 !important;
       }
+    }
+     .el-input__inner{
+      background-color: white;
+      color:  #999;
     }
   }
 
   .el-form-item {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e2e2;
+    background: #ffffff;
     border-radius: 5px;
     color: #454545;
+
   }
 }
 </style>
@@ -222,18 +231,17 @@ $light_gray:#eee;
     position: relative;
 
     .title {
+      margin-bottom: 0 !important;
       font-size: 26px;
       color: $light_gray;
-      margin: 0;
-      // margin: 0px auto 40px auto;
+      margin: 0px auto 40px auto;
       text-align: center;
       font-weight: bold;
-      img {
+      img{
         position: absolute;
-        top: -120px;
-        left: 50%;
-        margin-left: -48px;
         width: 96px;
+        top: -120px;
+        left: 170px;
       }
     }
   }
@@ -246,6 +254,11 @@ $light_gray:#eee;
     color: $dark_gray;
     cursor: pointer;
     user-select: none;
+  }
+  .code{
+    img{
+      margin-right: -45px;
+    }
   }
 }
 </style>
